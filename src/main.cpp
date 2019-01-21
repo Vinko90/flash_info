@@ -1,16 +1,6 @@
 #include <iostream>
 #include <getopt.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <fstream>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "ifd.h"
-
-#ifndef O_BINARY
-    #define O_BINARY 0
-#endif
 
 using namespace std;
 
@@ -28,23 +18,11 @@ static void print_help()
          << "   -h | --help                      Print this help" << endl;
 }
 
-static void convert_bytes(int size)
-{
-    cout << "Bytes: " << size << endl;
-    cout << "Kb: " << size/1024 << endl;
-    cout << "Mb " << size/1024/1024 << endl;
-}
-
 int main(int argc, char *argv[]) {
 
     int opt = 0;
     int option_index = 0;
     
-    char *rom_file;
-    int bios_descriptor = -1;
-    int bios_size = -1;
-    struct stat bios_buffer;
-
     static const struct option long_options[] = {
 		{"rom", 1, NULL, 'r'},
 		{"version", 0, NULL, 'v'},
@@ -56,61 +34,27 @@ int main(int argc, char *argv[]) {
 		
         switch (opt) {		
             case 'r':
-                rom_file = argv[2];
-                break;
+                open_rom_to_memory(argv[2]);
+                return 0;
             case 'v':
                 print_version();
-                exit(EXIT_SUCCESS);
                 break;
             case 'h':
                 print_help();
-                exit(EXIT_SUCCESS);
                 break;
             case '?':
             default:
                 print_help();
-                exit(EXIT_SUCCESS);
                 break;
         }
-	}
-
-    cout << "Preparing to opening the rom: " << rom_file << endl;
-	
-    bios_descriptor = open(rom_file, O_RDONLY | O_BINARY);
-    if (bios_descriptor == -1)
-    {
-       cout << "Could not open the rom file" << endl;
-       exit(EXIT_FAILURE);
     }
-	
-	if (fstat(bios_descriptor, &bios_buffer) == -1) {
-		perror("Could not stat the rom file");
-		exit(EXIT_FAILURE);
-	}
-	
-    bios_size = bios_buffer.st_size;
 
-	cout << "File " << rom_file << " is ";
-    convert_bytes(bios_size);
-
-	char *image = malloc(bios_size);
-	if (!image) {
-		printf("Out of memory.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (read(bios_descriptor, image, bios_size) != bios_size) {
-		perror("Could not read file");
-		exit(EXIT_FAILURE);
-	}
-
-	close(bios_descriptor);
-
-	//check_ifd_version(image, size);
-
-	free(image);
+    if (argc == 1 || argv[2] == NULL) 
+    {
+        print_help();
+        exit(EXIT_FAILURE);
+    }
 
 	return 0;
-
 }
 
