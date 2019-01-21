@@ -1,4 +1,5 @@
 #include <iostream>
+#include <list>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -18,23 +19,16 @@ using namespace std;
 	((const char *)(ptr) >= (base) &&		\
 	 (const char *)&(ptr)[1] <= (base) + (limit))
 
-/*static void convert_bytes(int size)
-{
-    cout << "Bytes: " << size << endl;
-    cout << "Kb: " << size/1024 << endl;
-    cout << "Mb " << size/1024/1024 << endl;
-}*/
-
 static const struct region_name region_names[MAX_REGIONS] = {
-	{ "Flash Descriptor", "fd"},
-	{ "BIOS", 			"bios"}, 
-	{ "Intel ME", 		  "me"},
-	{ "GbE", 			 "gbe"}, 
-	{ "Platform Data",    "pd"}, 
-	{ "Reserved_1",     "res1"}, 
-	{ "Reserved_2",     "res2"}, 
-	{ "Reserved_3",     "res3"}, 
-	{ "EC",               "ec"}, 
+	{ "Flash Descriptor", "FD"},
+	{ "BIOS", 			"BIOS"}, 
+	{ "Intel ME", 		  "ME"},
+	{ "GbE", 			 "GbE"}, 
+	{ "Platform Data",    "PD"}, 
+	{ "Reserved_1",     "RES1"}, 
+	{ "Reserved_2",     "RES2"}, 
+	{ "Reserved_3",     "RES3"}, 
+	{ "EC",               "EC"}, 
 };
 
 static char *bios_image;
@@ -60,7 +54,8 @@ void open_rom_to_memory(char* filename)
 	}
 	
     bios_size = bios_buffer.st_size;
-	cout << "Your ROM is " << bios_size/1024/1024 << "MB" << endl;
+	cout << "Your ROM is " << bios_size/1024/1024 << "MB" 
+		<< " end address at " << hex << showbase << bios_size << endl << endl;
     
 	bios_image = new char[bios_size];
     if (!bios_image) {
@@ -74,7 +69,6 @@ void open_rom_to_memory(char* filename)
 	}
 
 	close(file_descriptor);
-
 	
     dump_layout();
 
@@ -124,25 +118,32 @@ fdbar_t *find_flash_descriptor()
 void dump_frba_layout(const frba_t *frba)
 {
 	unsigned int i;
-
-	//Open the new file
+	list<region_t> detected_regions;
 
 	for (i = 0; i < MAX_REGIONS; i++) {
 		region_t region = get_region(frba, i);
 		/* is region invalid? */
 		if (region.size < 1)
-			continue;
-
-		cout << "------------" << region.base << endl;
-
-		dump_region_layout(i, frba);
-		//Write single region to file
-
-
-
+			continue;	
+		detected_regions.push_back(region);
 	}
-	//Close file
-	cout << "Wrote layout done" << endl;
+
+	detected_regions.sort(compare_base);
+	
+	for(region_t var : detected_regions)
+	{
+		cout << "--------------" << " " << showbase << hex << var.base << endl;
+		
+		if(var.size < 10000){
+			cout << var.name << " = " << noshowbase << var.size/1024 << "Kb" << endl;
+		}
+		else{
+			cout << var.name << " = " << noshowbase << var.size/1024/1024 << "MB" << endl;
+		}
+		
+		cout << "--------------" << " " << showbase << hex << var.limit << endl << endl;
+	}
+
 }
 
 region_t get_region(const frba_t *frba, unsigned int region_type)
@@ -163,6 +164,9 @@ region_t get_region(const frba_t *frba, unsigned int region_type)
 	region.base = (flreg & base_mask) << 12;
 	region.limit = ((flreg & limit_mask) >> 4) | 0xfff;
 	region.size = region.limit - region.base + 1;
+
+	//test
+	region.name = region_names[region_type].short_name;
 
 	if (region.size < 0)
 		region.size = 0;
@@ -185,4 +189,19 @@ const char *region_name_short(unsigned int region_type)
 	}
 
 	return region_names[region_type].short_name;
+}
+
+bool compare_base(region_t first_element, region_t second_element)
+{
+	 //First Argument Stays First (Return true)
+    if (first_element.base < second_element.base) 
+        return true; 
+ 
+    //First Argument goes Next (Swap) (Return false)
+    if (first_element.base > second_element.base) 
+        return false;
+ 
+    //a==b. First Argument Stays first 
+    //(No need to Swap)
+    return true;
 }

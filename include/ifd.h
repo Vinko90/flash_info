@@ -27,6 +27,7 @@ struct region_name {
 
 typedef struct {
 	int base, limit, size;
+	const char *name;
 } region_t;
 
 void open_rom_to_memory(char* filename);
@@ -45,5 +46,6 @@ void dump_region_layout(unsigned int num, const frba_t *frba);
 
 const char *region_name_short(unsigned int region_type);
 
+bool compare_base(region_t first_element, region_t second_element);
 
 #endif
